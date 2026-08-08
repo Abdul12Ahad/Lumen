@@ -2,18 +2,26 @@
 #include <string>
 #include <vector>
 #include "token.hpp"
+#include <optional>
 
 namespace lumen
 {
     class Lexer
     {
         public:
-            explicit Lexer(const std::string& source) : src_(source) {}
+            explicit Lexer(
+            const std::string& source,
+            DiagnosticEngine& diagnostics
+        )
+            : src_(source),
+              diagnostics_(diagnostics) {}
 
             std::vector<Token> tokenize();
 
         private:
             const std::string& src_;
+            DiagnosticEngine& diagnostics_;
+            
             size_t pos_ = 0;
             int line_ = 1;
             int column_ = 1;
@@ -34,10 +42,9 @@ namespace lumen
             bool match(char expected);
             void skipWhitespaceAndComments();
             Token makeToken(TokenKind kind, size_t start, int startLine, int startColumn);
-            Token errorToken(const std::string& msg, int startLine, int startColumn);
             Token scanIdentifierorKeyword();
             Token scanNumber();
-            Token scanOperatororPunctuation();
+            std::optional<Token> scanOperatororPunctuation();
 
             static TokenKind keywordOrIdentifier(std::string_view text);
     };

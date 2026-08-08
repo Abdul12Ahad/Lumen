@@ -6,3 +6,6 @@ if(age >= 18)
     age = age + 1;
     print("Dec");
 }
+
+if(@)
+    return;

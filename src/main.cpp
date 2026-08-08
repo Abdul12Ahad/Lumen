@@ -30,7 +30,9 @@ int main(int argc, char ** argv)
     try
     {
         std::string source = readFile(argv[1]);
-        lumen::Lexer lexer(source);
+        lumen::DiagnosticEngine diagnostics;
+        lumen::Lexer lexer(source, diagnostics);
+        // so above we are actaully giving the lexer a reference to the diagnostEngine like as it belongs to the main function so lexer is sharing it with the main function so now the flow is like:Lexer detects an error → reports it to DiagnosticEngine → main.cpp reads the diagnostics and prints them. so now the tokens are printed out first and then later the errors as this provides a great arch for handling things
 
         auto tokens = lexer.tokenize();
 
@@ -45,6 +47,17 @@ int main(int argc, char ** argv)
                 << ", Column "
                 << token.column
                 << '\n';
+        }
+
+        for(const auto& diagnostic : diagnostics.diagnostics())
+        {
+            std::cerr << "error:Line" <<
+            diagnostic.line
+            << ", Column"
+            << diagnostic.column
+            << ": "
+            << diagnostic.message
+            << '\n';
         }
     }
     catch(const std::exception& e)

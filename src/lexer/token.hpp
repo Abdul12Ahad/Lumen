@@ -13,8 +13,14 @@ namespace lumen
         Plus, Minus, Star, Slash, Mod,
         Equals, EqualsEquals, Less, LessEqual, GreaterEqual, Greater, LParen, RParen, LBrace, RBrace, Semicolon, BangEquals, Bang, AndAnd, OrOr, And, Or,
         //control
-        EndOfFile, Error
+        EndOfFile
     
+    };
+
+    enum class DiagnosticSeverity
+    {
+        Warning,
+        Error
     };
     
     struct Token
@@ -23,5 +29,28 @@ namespace lumen
         std::string_view lexeme;
         int line;
         int column;
+    };
+
+    struct Diagnostic
+    {
+        DiagnosticSeverity severity;
+        int line;
+        int column;
+        std::string message;
+    };
+
+    class DiagnosticEngine
+    {
+        public:
+            void reportError(
+                int line,
+                int column,
+                const std::string& message
+            );
+
+            const std::vector<Diagnostic>& diagnostics() const;
+
+        private:
+            std::vector<Diagnostic> diagnostics_;
     };
 }

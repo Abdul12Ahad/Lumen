@@ -4,6 +4,29 @@
 
 namespace lumen
 {
+
+    void DiagnosticEngine::reportError(
+        int line,
+        int column,
+        const std::string& message
+    )
+    {
+        diagnostics_.push_back(
+            Diagnostic{
+                DiagnosticSeverity::Error,
+                line,
+                column,
+                message
+            }
+        );
+    }
+
+    const std::vector<Diagnostic>&
+    DiagnosticEngine::diagnostics() const
+    {
+        return diagnostics_;
+    }
+
     char Lexer::advance()
     {
         char c = src_[pos_++];
@@ -51,11 +74,6 @@ namespace lumen
         return Token{kind,lexeme, startLine, startColumn};
     }
 
-    Token Lexer::errorToken(const std::string& msg, int startLine, int startColumn)
-    {
-        return Token{TokenKind::Error, std::string_view(msg), startLine, startColumn};
-    }
-    
     TokenKind Lexer::keywordOrIdentifier(std::string_view text)
     {
         static const std::unordered_map<std::string_view, TokenKind> keywords = {
@@ -90,7 +108,7 @@ namespace lumen
         return makeToken(TokenKind::Number, start, line, col);
     }
 
-    Token Lexer::scanOperatororPunctuation()
+    std::optional<Token> Lexer::scanOperatororPunctuation()
     {
         size_t start = pos_;
         int line = line_, col = column_;
@@ -158,7 +176,13 @@ namespace lumen
             return makeToken(TokenKind::Or, start, line,col);
             break;
         default:
-            return errorToken(std::string("unexpected character '") + c + "'", line, col);
+            diagnostics_.reportError(
+                line,
+                col,
+                std::string("unexpected Character '")+c+"'"
+            );
+
+            return std::nullopt;
         }
     }
 
@@ -182,7 +206,13 @@ namespace lumen
             else if(std::isdigit((unsigned char)c))
                 tokens.push_back(scanNumber());
             else
-                tokens.push_back(scanOperatororPunctuation());
+            {
+                auto token = scanOperatororPunctuation();
+                if(token.has_value())
+                {
+                    tokens.push_back(*token);
+                }
+            }
         }
         return tokens;
     }
