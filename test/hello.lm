@@ -1,0 +1,8 @@
+int age = 20;
+float dec = 3.14;
+
+if(age >= 18)
+{
+    age = age + 1;
+    print("Dec");
+}
