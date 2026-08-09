@@ -5,6 +5,7 @@
 
 #include "lexer/lexer.hpp"
 #include "lexer/token.hpp"
+#include "parser/parser.hpp"
 
 static std::string readFile(const std::string& path)
 {
@@ -36,6 +37,10 @@ int main(int argc, char ** argv)
 
         auto tokens = lexer.tokenize();
 
+        lumen::Parser parser(std::move(tokens));
+
+        auto program = parser.parseProgram();
+
         for(const auto& token : tokens)
         {
             std::cout
@@ -48,6 +53,8 @@ int main(int argc, char ** argv)
                 << token.column
                 << '\n';
         }
+
+        std::cout << "\nParsing successful!\n";
 
         for(const auto& diagnostic : diagnostics.diagnostics())
         {
