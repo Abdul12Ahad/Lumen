@@ -6,6 +6,7 @@
 #include "lexer/lexer.hpp"
 #include "lexer/token.hpp"
 #include "parser/parser.hpp"
+#include "ast/ast_printer.hpp"
 
 static std::string readFile(const std::string& path)
 {
@@ -37,10 +38,7 @@ int main(int argc, char ** argv)
 
         auto tokens = lexer.tokenize();
 
-        lumen::Parser parser(std::move(tokens));
-
-        auto program = parser.parseProgram();
-
+        std::cout << " TOKENS \n";
         for(const auto& token : tokens)
         {
             std::cout
@@ -54,22 +52,44 @@ int main(int argc, char ** argv)
                 << '\n';
         }
 
+        
+        lumen::Parser parser(std::move(tokens));
+
+        auto program = parser.parseProgram();
+
+        std::cout <<"\n  PARSING  \n";
         std::cout << "\nParsing successful\n";
 
-        for(const auto& diagnostic : diagnostics.diagnostics())
+        std::cout << "\n AST \n";
+
+        lumen::ASTPrinter printer;
+        printer.print(program);
+
+        if (!diagnostics.diagnostics().empty())
         {
-            std::cerr << "error:Line" <<
-            diagnostic.line
-            << ", Column"
-            << diagnostic.column
-            << ": "
-            << diagnostic.message
-            << '\n';
+            std::cerr << "\n DIAGNOSTICS \n";
+
+            for (const auto& diagnostic :
+                 diagnostics.diagnostics())
+            {
+                std::cerr
+                    << "error: Line "
+                    << diagnostic.line
+                    << ", Column "
+                    << diagnostic.column
+                    << ": "
+                    << diagnostic.message
+                    << '\n';
+            }
         }
     }
-    catch(const std::exception& e)
+    catch (const std::exception& e)
     {
-        std::cerr << "error: " << e.what() << '\n';
+        std::cerr
+            << "error: "
+            << e.what()
+            << '\n';
+
         return 1;
     }
     return 0;
