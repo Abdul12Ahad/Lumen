@@ -54,7 +54,7 @@ int main(int argc, char ** argv)
                 << '\n';
         }
 
-        std::cout << "\nParsing successful!\n";
+        std::cout << "\nParsing successful\n";
 
         for(const auto& diagnostic : diagnostics.diagnostics())
         {

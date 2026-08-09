@@ -1,6 +1,7 @@
 #pragma once
 #include <vector>
 #include <string>
+#include <stdexcept>
 #include <utility>
 #include <vector>
 #include "../lexer/lexer.hpp"
@@ -17,8 +18,12 @@ namespace lumen
             std::vector<Token> tokens_;
             size_t pos_ = 0;
 
-            const Token& peek() const {return tokens_[pos_];}
-            const Token& previous() const {
+            const Token& peek() const 
+            {
+                return tokens_[pos_];
+            }
+            const Token& previous() const 
+            {
                 return tokens_[pos_-1];
             }
             bool check(TokenKind k) const
@@ -44,7 +49,10 @@ namespace lumen
                 }
                 return false;
             }
-            const Token& expect(TokenKind k, const std::string& msg);
+            const Token& expect
+            (
+                TokenKind k, const std::string& msg
+            );
             void synchronize ();
 
             FunctionDecl parseFunction();
@@ -59,6 +67,8 @@ namespace lumen
 
             ExprPtr parseExpr();
             ExprPtr parseAssignment();
+            ExprPtr parseOr();
+            ExprPtr parseAnd();
             ExprPtr parseEquality();
             ExprPtr parseComparison();
             ExprPtr parseTerm();
