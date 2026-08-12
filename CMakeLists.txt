@@ -8,6 +8,7 @@ add_executable(lumen
     src/lexer/lexer.cpp
     src/parser/parser.cpp
     src/ast/ast_printer.cpp
+    src/sema/sema.cpp
 )
 
 target_include_directories(lumen PRIVATE src)

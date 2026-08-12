@@ -33,7 +33,17 @@ namespace lumen
         while(!atEnd())
         {
             if(previous().kind == TokenKind::Semicolon) return;
+            
             if(peek().kind == TokenKind::RBrace) return;
+
+            if(check(TokenKind::KwInt) ||
+            check(TokenKind::KwIf) ||
+            check(TokenKind::KwWhile) ||
+            check(TokenKind::KwFor) ||
+            check(TokenKind::KwReturn) ||
+            check(TokenKind::LBrace))
+                return;
+
             advance();
         }
     }

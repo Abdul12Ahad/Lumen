@@ -7,6 +7,7 @@
 #include "lexer/token.hpp"
 #include "parser/parser.hpp"
 #include "ast/ast_printer.hpp"
+#include "sema/sema.hpp"
 
 static std::string readFile(const std::string& path)
 {
@@ -58,7 +59,19 @@ int main(int argc, char ** argv)
         auto program = parser.parseProgram();
 
         std::cout <<"\n  PARSING  \n";
-        std::cout << "\nParsing successful\n";
+        std::cout << "\nParsing successful\n\n";
+
+        lumen::Sema sema;
+
+        bool semanticSuccess = sema.check(program);
+
+        if (!semanticSuccess)
+        {
+            std::cerr << "\nSemantic analysis failed\n";
+            return 1;
+        }
+
+        std::cout << "\nSemantic analysis successful\n";
 
         std::cout << "\n AST \n";
 
