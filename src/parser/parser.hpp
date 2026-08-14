@@ -1,9 +1,8 @@
 #pragma once
-#include <vector>
-#include <string>
 #include <stdexcept>
-#include <utility>
+#include <string>
 #include <vector>
+#include <utility>
 #include "../lexer/lexer.hpp"
 #include "../ast/ast.hpp"
 
@@ -17,6 +16,7 @@ namespace lumen
         private:
             std::vector<Token> tokens_;
             size_t pos_ = 0;
+            bool hadError_ = false;
 
             const Token& peek() const 
             {
@@ -33,6 +33,10 @@ namespace lumen
             bool atEnd() const
             {
                 return check(TokenKind::EndOfFile);
+            }
+            bool hadError() const
+            {
+                return hadError_;
             }
             const Token& advance()
             {
@@ -55,6 +59,7 @@ namespace lumen
             );
             void synchronize ();
 
+            TypeKind parseType();
             FunctionDecl parseFunction();
             StmtPtr parseStatment();
             StmtPtr parseVarDecl();

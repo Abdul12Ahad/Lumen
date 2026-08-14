@@ -14,8 +14,16 @@ namespace lumen
             bool ok_ = true;
 
             void checkFunction(FunctionDecl& fn);
-            void checkStmt(Stmt* stmt);
-            void checkExpr(Expr* expr);
+            void checkStmt(Stmt* stmt,
+                TypeKind returnType);
+            TypeKind checkExpr(Expr* expr);
+            TypeKind checkBinary(
+            BinaryExpr* expr);
+            TypeKind checkUnary(
+                UnaryExpr* expr);
+            bool isAssignable(
+                TypeKind target,
+                TypeKind source);
 
             void error(int line,const std::string& msg);
     };

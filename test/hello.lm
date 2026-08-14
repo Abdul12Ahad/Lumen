@@ -1,6 +1,28 @@
-int main() {
-    int x = y;
-    int x = 20;
-    z = x;
-    return q;
+int main()
+{
+    int x = 10;
+    float y = x;
+    double z = y + 2.5;
+    bool flag = x > 5;
+
+    if (flag)
+    {
+        x = x + 1;
+    }
+    else
+    {
+        x = x - 1;
+    }
+
+    while (x < 20)
+    {
+        x = x + 1;
+    }
+
+    for (int i = 0; i < 10; i = i + 1)
+    {
+        x = x + i;
+    }
+
+    return x;
 }

@@ -1,4 +1,5 @@
 #include "ast_printer.hpp"
+#include "../type/type.hpp"
 
 namespace lumen
 {
@@ -43,6 +44,21 @@ const char* ASTPrinter::tokenKindToString(TokenKind kind)
         case TokenKind::GreaterEqual:
             return ">=";
 
+        case TokenKind::Mod:
+            return "%";
+
+        case TokenKind::BangEquals:
+            return "!=";
+
+        case TokenKind::Bang:
+            return "!";
+
+        case TokenKind::AndAnd:
+            return "&&";
+
+        case TokenKind::OrOr:
+            return "||";
+
         default:
             return "?";
     }
@@ -65,7 +81,12 @@ void ASTPrinter::printFunction(
     int indent)
 {
     printIndent(indent);
-    std::cout << "Function: " << function.name << "\n";
+    std::cout
+    << "Function: "
+    << typeKindToString(function.returnType)
+    << " "
+    << function.name
+    << "\n";
 
     printStmt(function.body.get(), indent + 1);
 }
@@ -79,7 +100,11 @@ void ASTPrinter::printExpr(const Expr* expr, int indent)
     if (auto* number = dynamic_cast<const NumberExpr*>(expr))
     {
         printIndent(indent);
-        std::cout << "Number: " << number->value << "\n";
+        std::cout << "Number: "
+          << number->value
+          << " ["
+          << typeKindToString(number->type)
+          << "]\n";
     }
 
 
@@ -87,8 +112,10 @@ void ASTPrinter::printExpr(const Expr* expr, int indent)
     {
         printIndent(indent);
         std::cout << "Variable: "
-                  << variable->name
-                  << "\n";
+          << variable->name
+          << " ["
+          << typeKindToString(variable->type)
+          << "]\n";
     }
 
 
@@ -97,8 +124,10 @@ void ASTPrinter::printExpr(const Expr* expr, int indent)
     {
         printIndent(indent);
         std::cout << "Assign: "
-                  << assignment->name
-                  << "\n";
+          << assignment->name
+          << " ["
+          << typeKindToString(assignment->type)
+          << "]\n";
 
         printExpr(
             assignment->value.get(),
@@ -112,8 +141,10 @@ void ASTPrinter::printExpr(const Expr* expr, int indent)
     {
         printIndent(indent);
         std::cout << "Binary: "
-                  << tokenKindToString(binary->op)
-                  << "\n";
+          << tokenKindToString(binary->op)
+          << " ["
+          << typeKindToString(binary->type)
+          << "]\n";
 
         printExpr(
             binary->lhs.get(),
@@ -131,8 +162,10 @@ void ASTPrinter::printExpr(const Expr* expr, int indent)
     {
         printIndent(indent);
         std::cout << "Unary: "
-                  << tokenKindToString(unary->op)
-                  << "\n";
+          << tokenKindToString(unary->op)
+          << " ["
+          << typeKindToString(unary->type)
+          << "]\n";
 
         printExpr(
             unary->operand.get(),
@@ -170,6 +203,7 @@ void ASTPrinter::printStmt(
     {
         printIndent(indent);
         std::cout << "VarDecl: "
+                << typeKindToString(declaration->type) << " "
                   << declaration->name
                   << "\n";
 

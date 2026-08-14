@@ -13,6 +13,8 @@ namespace lumen
         if(check(k))
             return advance();
 
+        hadError_ = true;
+
         throw std::runtime_error
         (
             "parser error at line "
@@ -48,6 +50,25 @@ namespace lumen
         }
     }
 
+    TypeKind Parser::parseType()
+    {
+        if(match(TokenKind::KwInt))
+            return TypeKind::Int;
+
+        if(match(TokenKind::KwFloat))
+            return TypeKind::Float;
+
+        if(match(TokenKind::KwBool))
+            return TypeKind::Bool;
+
+        if(match(TokenKind::KwDouble))
+            return TypeKind::Double;
+
+        throw std::runtime_error(
+            "expected type"
+        );
+    }
+
     Program Parser::parseProgram()
     {
         Program program;
@@ -68,12 +89,7 @@ namespace lumen
 
     FunctionDecl Parser::parseFunction()
     {
-        Token returnType =
-        expect
-        (
-            TokenKind::KwInt,
-            "expected return type 'int'"
-        );
+        TypeKind returnType = parseType();
 
         Token name =
             expect
@@ -98,6 +114,7 @@ namespace lumen
 
         return FunctionDecl
         (
+            returnType,
             std::string(name.lexeme),
             std::move(body)
         );
@@ -144,8 +161,11 @@ namespace lumen
 
     StmtPtr Parser::parseStatment()
     {
-        if(check(TokenKind::KwInt))
-        return parseVarDecl();
+        if(check(TokenKind::KwInt) ||
+        check(TokenKind::KwFloat) ||
+        check(TokenKind::KwDouble) ||
+        check(TokenKind::KwBool))
+            return parseVarDecl();
 
         if(check(TokenKind::KwIf))
             return parseIf();
@@ -167,10 +187,12 @@ namespace lumen
 
     StmtPtr Parser::parseVarDecl()
     {
-        Token intToken = advance();
+        TypeKind type = parseType();
         Token name = expect(TokenKind::Identifier,"expected variable name");
+
         auto decl = std::make_unique<VarDeclStmt>();
-        decl->line = intToken.line;
+        decl->line = name.line;
+        decl->type = type;
         decl->name = std::string(name.lexeme);
         if(match(TokenKind::Equals))
             decl->init = parseExpr();
@@ -184,15 +206,31 @@ namespace lumen
     StmtPtr Parser::parseIf()
     {
         Token ifToken = advance();
-        expect (TokenKind::LParen, "expected '(' after 'if'");
+
+        expect(
+            TokenKind::LParen,
+            "expected '(' after 'if'"
+        );
+
         auto stmt = std::make_unique<IfStmt>();
+
         stmt->line = ifToken.line;
+
         stmt->cond = parseExpr();
-        expect(TokenKind::RParen, "expected ')'");
+
+        expect(
+            TokenKind::RParen,
+            "expected ')'"
+        );
+
         stmt->thenBranch = parseStatment();
-        if(match(TokenKind::KwElse))
+
+        if (match(TokenKind::KwElse))
+        {
             stmt->elseBranch = parseStatment();
-            return stmt;
+        }
+
+        return stmt;
     }
 
     StmtPtr Parser::parseWhile()
@@ -210,29 +248,66 @@ namespace lumen
     StmtPtr Parser::parseFor()
     {
         Token forToken = advance();
-        expect(TokenKind::LParen, "expected '(' after 'for'");
+
+        expect(
+            TokenKind::LParen,
+            "expected '(' after 'for'"
+        );
+
         auto stmt = std::make_unique<ForStmt>();
         stmt->line = forToken.line;
-        if (check(TokenKind::KwInt))
+
+        if (check(TokenKind::KwInt) ||
+            check(TokenKind::KwFloat) ||
+            check(TokenKind::KwDouble) ||
+            check(TokenKind::KwBool))
         {
             stmt->init = parseVarDecl();
         }
-        else if (!check(TokenKind::Semicolon)) {
-            stmt->init = parseStatment();
-        } else 
+        else if (!check(TokenKind::Semicolon))
+        {
+            auto expr = parseExpr();
+
+            expect(
+                TokenKind::Semicolon,
+                "expected ';' after for initializer"
+            );
+
+            auto exprStmt =
+                std::make_unique<ExprStmt>();
+
+            exprStmt->line = expr->line;
+            exprStmt->expr = std::move(expr);
+
+            stmt->init = std::move(exprStmt);
+        }
+        else
         {
             advance();
         }
-        if (!check(TokenKind::Semicolon)) 
+
+        if (!check(TokenKind::Semicolon))
         {
             stmt->cond = parseExpr();
         }
-        expect(TokenKind::Semicolon, "expected ';' after for condition");
-        if (!check(TokenKind::RParen)) {
+
+        expect(
+            TokenKind::Semicolon,
+            "expected ';' after for condition"
+        );
+
+        if (!check(TokenKind::RParen))
+        {
             stmt->increment = parseExpr();
         }
-        expect(TokenKind::RParen, "expected ')' after for clauses");
+
+        expect(
+            TokenKind::RParen,
+            "expected ')' after for clauses"
+        );
+
         stmt->body = parseStatment();
+
         return stmt;
     }
 
@@ -395,7 +470,7 @@ namespace lumen
 
     ExprPtr Parser::parseUnary()
     {
-        if (check(TokenKind::Minus)) 
+        if (check(TokenKind::Minus) || check(TokenKind::Bang))
         {
             Token opToken = advance();
             auto un = std::make_unique<UnaryExpr>();
@@ -414,9 +489,21 @@ namespace lumen
             Token tok = advance();
             auto n = std::make_unique<NumberExpr>();
             n->line = tok.line;
-            n->value = std::stoi(std::string(tok.lexeme));
+            
+            std::string text(tok.lexeme);
+            if (text.find('.') != std::string::npos)
+            {
+                n->value = std::stod(text);
+                n->isInteger = false;
+            }
+            else
+            {
+                n->value = std::stod(text);
+                n->isInteger = true;
+            }
             return n;
         }
+
         if (check(TokenKind::Identifier)) 
         {
             Token tok = advance();

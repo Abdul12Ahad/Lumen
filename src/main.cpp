@@ -59,6 +59,7 @@ int main(int argc, char ** argv)
         auto program = parser.parseProgram();
 
         std::cout <<"\n  PARSING  \n";
+
         std::cout << "\nParsing successful\n\n";
 
         lumen::Sema sema;

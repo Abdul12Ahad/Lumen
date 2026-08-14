@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "../lexer/token.hpp"
+#include "../type/type.hpp"
 
 namespace lumen
 {
@@ -15,13 +16,15 @@ namespace lumen
         virtual ~Expr() = default;
 
         int line = 0;
+        TypeKind type = TypeKind::Unknown;
     };
 
     using ExprPtr = std::unique_ptr<Expr>;
 
     struct NumberExpr : Expr
     {
-        int value = 0;
+        double value = 0.0;
+        bool isInteger = true;
     };
 
     struct VarExpr : Expr
@@ -59,6 +62,7 @@ namespace lumen
 
     struct VarDeclStmt : Stmt
     {
+        TypeKind type;
         std::string name;
         ExprPtr init; 
     };
@@ -101,14 +105,17 @@ namespace lumen
 
     struct FunctionDecl
     {
+        TypeKind returnType;
         std::string name;
         std::unique_ptr<BlockStmt> body;
 
         FunctionDecl(
+            TypeKind returnType,
             std::string name,
             std::unique_ptr<BlockStmt> body
         )
-            : name(std::move(name)),
+            : returnType(returnType),
+            name(std::move(name)),
             body(std::move(body))
         {
         }

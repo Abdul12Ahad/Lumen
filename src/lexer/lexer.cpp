@@ -103,9 +103,34 @@ namespace lumen
     Token Lexer::scanNumber()
     {
         size_t start = pos_;
-        int line = line_, col = column_;
-        while(!atEnd() && std::isdigit((unsigned char)peek())) advance();
-        return makeToken(TokenKind::Number, start, line, col);
+        int line = line_;
+        int col = column_;
+
+        while (!atEnd() &&
+            std::isdigit(static_cast<unsigned char>(peek())))
+        {
+            advance();
+        }
+
+        if (!atEnd() &&
+            peek() == '.' &&
+            std::isdigit(static_cast<unsigned char>(peekNext())))
+        {
+            advance();
+
+            while (!atEnd() &&
+                std::isdigit(static_cast<unsigned char>(peek())))
+            {
+                advance();
+            }
+        }
+
+        return makeToken(
+            TokenKind::Number,
+            start,
+            line,
+            col
+        );
     }
 
     std::optional<Token> Lexer::scanOperatororPunctuation()
@@ -166,14 +191,36 @@ namespace lumen
             return makeToken(TokenKind::Bang, start, line,col);
             break;
         case '&':
-            if(match('&')) 
-                return makeToken(TokenKind::AndAnd, start, line, col);
-            return makeToken(TokenKind::And, start, line,col);
+            if (match('&'))
+                return makeToken(
+                    TokenKind::AndAnd,
+                    start,
+                    line,
+                    col
+                );
+
+            diagnostics_.reportError(
+                line,
+                col,
+                "unexpected character '&'; did you mean '&&'?"
+            );
+            return std::nullopt;
             break;
         case '|':
-            if(match('|')) 
-                return makeToken(TokenKind::OrOr, start, line, col);
-            return makeToken(TokenKind::Or, start, line,col);
+            if (match('|'))
+                return makeToken(
+                    TokenKind::OrOr,
+                    start,
+                    line,
+                    col
+                );
+
+            diagnostics_.reportError(
+                line,
+                col,
+                "unexpected character '|'; did you mean '||'?"
+            );
+            return std::nullopt;
             break;
         default:
             diagnostics_.reportError(
