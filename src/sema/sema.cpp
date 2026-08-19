@@ -38,332 +38,293 @@ bool Sema::check(Program& program)
 void Sema::checkFunction(FunctionDecl& fn)
 {
     symbols_.pushScope();
+    currentReturnType_ = fn.returnType;
 
     for (auto& stmt : fn.body->statements)
     {
-        checkStmt(stmt.get(),fn.returnType);
+        if (stmt)
+        {
+            stmt->accept(*this);
+        }
+    }
+
+    symbols_.popScope();
+}
+
+void Sema::visit(VarDeclStmt& stmt)
+{
+    if (stmt.init)
+    {
+        TypeKind initType =
+            checkExpr(stmt.init.get());
+
+        if (!isAssignable(
+                stmt.type,
+                initType))
+        {
+            error(
+                stmt.line,
+                "cannot initialize variable '" +
+                stmt.name +
+                "' of type " +
+                typeKindToString(stmt.type) +
+                " with expression of type " +
+                typeKindToString(initType)
+            );
+        }
+    }
+
+    try
+    {
+        symbols_.declare(
+            Symbol{
+                stmt.name,
+                stmt.type
+            }
+        );
+    }
+    catch (const std::exception& e)
+    {
+        error(
+            stmt.line,
+            e.what()
+        );
+    }
+}
+
+
+void Sema::visit(ExprStmt& stmt)
+{
+    checkExpr(stmt.expr.get());
+}
+
+
+void Sema::visit(BlockStmt& stmt)
+{
+    symbols_.pushScope();
+
+    for (auto& statement : stmt.statements)
+    {
+        if (statement)
+        {
+            statement->accept(*this);
+        }
     }
 
     symbols_.popScope();
 }
 
 
-void Sema::checkStmt(Stmt* stmt,TypeKind returnType)
+void Sema::visit(IfStmt& stmt)
 {
-    if (!stmt)
-        return;
+    TypeKind condType =
+        checkExpr(stmt.cond.get());
 
-    if (auto* decl =
-            dynamic_cast<VarDeclStmt*>(stmt))
+    if (condType != TypeKind::Bool)
     {
-        if (decl->init)
-        {
-            TypeKind initType =
-                checkExpr(decl->init.get());
-
-            if (!isAssignable(
-                    decl->type,
-                    initType))
-            {
-                error(
-                    decl->line,
-                    "cannot initialize variable '" +
-                    decl->name +
-                    "' of type " +
-                    typeKindToString(decl->type) +
-                    " with expression of type " +
-                    typeKindToString(initType)
-                );
-            }
-        }
-
-        try
-        {
-            symbols_.declare(
-                Symbol{
-                    decl->name,
-                    decl->type
-                }
-            );
-        }
-        catch (const std::exception& e)
-        {
-            error(
-                decl->line,
-                e.what()
-            );
-        }
-
-        return;
-    }
-
-    if (auto* block =
-            dynamic_cast<BlockStmt*>(stmt))
-    {
-        symbols_.pushScope();
-
-        for (auto& s :
-             block->statements)
-        {
-            checkStmt(s.get(), returnType);
-        }
-
-        symbols_.popScope();
-
-        return;
-    }
-
-    if (auto* ifs =
-            dynamic_cast<IfStmt*>(stmt))
-    {
-        TypeKind condType =
-            checkExpr(ifs->cond.get());
-
-        if (condType != TypeKind::Bool)
-        {
-            error(
-                ifs->line,
-                "if condition must be bool"
-            );
-        }
-
-        checkStmt(
-            ifs->thenBranch.get(),
-            returnType
+        error(
+            stmt.line,
+            "if condition must be bool"
         );
-
-        if (ifs->elseBranch)
-        {
-            checkStmt(
-                ifs->elseBranch.get(),
-                returnType
-            );
-        }
-
-        return;
     }
 
-    if (auto* whiles =
-            dynamic_cast<WhileStmt*>(stmt))
+    if (stmt.thenBranch)
     {
-        TypeKind condType =
-            checkExpr(whiles->cond.get());
-
-        if (condType != TypeKind::Bool)
-        {
-            error(
-                whiles->line,
-                "while condition must be bool"
-            );
-        }
-
-        checkStmt(
-            whiles->body.get(),
-            returnType
-        );
-
-        return;
+        stmt.thenBranch->accept(*this);
     }
 
-    if (auto* forStmt =
-            dynamic_cast<ForStmt*>(stmt))
+    if (stmt.elseBranch)
     {
-        symbols_.pushScope();
-
-        if (forStmt->init)
-        {
-            checkStmt(
-                forStmt->init.get(),
-                returnType
-            );
-        }
-
-        if (forStmt->cond)
-        {
-            TypeKind condType =
-                checkExpr(
-                    forStmt->cond.get()
-                );
-
-            if (condType != TypeKind::Bool)
-            {
-                error(
-                    forStmt->line,
-                    "for condition must be bool"
-                );
-            }
-        }
-
-        if (forStmt->increment)
-        {
-            checkExpr(
-                forStmt->increment.get()
-            );
-        }
-
-        checkStmt(
-            forStmt->body.get(),
-            returnType
-        );
-
-        symbols_.popScope();
-
-        return;
-    }
-
-    if (auto* ret =
-            dynamic_cast<ReturnStmt*>(stmt))
-    {
-        if (!ret->value)
-        {
-            error(
-                ret->line,
-                "return statement requires a value"
-            );
-
-            return;
-        }
-
-        TypeKind actualType =
-            checkExpr(
-                ret->value.get()
-            );
-
-        if (!isAssignable(
-                returnType,
-                actualType))
-        {
-            error(
-                ret->line,
-                "cannot return expression of type " +
-                std::string(typeKindToString(actualType)) +
-                " from function returning " +
-                typeKindToString(returnType)
-            );
-        }
-
-        return;
-    }
-
-    if (auto* es =
-            dynamic_cast<ExprStmt*>(stmt))
-    {
-        checkExpr(
-            es->expr.get()
-        );
-
-        return;
+        stmt.elseBranch->accept(*this);
     }
 }
 
+
+void Sema::visit(WhileStmt& stmt)
+{
+    TypeKind condType =
+        checkExpr(stmt.cond.get());
+
+    if (condType != TypeKind::Bool)
+    {
+        error(
+            stmt.line,
+            "while condition must be bool"
+        );
+    }
+
+    if (stmt.body)
+    {
+        stmt.body->accept(*this);
+    }
+}
+
+
+void Sema::visit(ForStmt& stmt)
+{
+    symbols_.pushScope();
+
+    if (stmt.init)
+    {
+        stmt.init->accept(*this);
+    }
+
+    if (stmt.cond)
+    {
+        TypeKind condType =
+            checkExpr(stmt.cond.get());
+
+        if (condType != TypeKind::Bool)
+        {
+            error(
+                stmt.line,
+                "for condition must be bool"
+            );
+        }
+    }
+
+    if (stmt.increment)
+    {
+        checkExpr(stmt.increment.get());
+    }
+
+    if (stmt.body)
+    {
+        stmt.body->accept(*this);
+    }
+
+    symbols_.popScope();
+}
+
+
+void Sema::visit(ReturnStmt& stmt)
+{
+    if (!stmt.value)
+    {
+        error(
+            stmt.line,
+            "return statement requires a value"
+        );
+
+        return;
+    }
+
+    TypeKind actualType =
+        checkExpr(stmt.value.get());
+
+    if (!isAssignable(
+            currentReturnType_,
+            actualType))
+    {
+        error(
+            stmt.line,
+            "cannot return expression of type " +
+            std::string(typeKindToString(actualType)) +
+            " from function returning " +
+            typeKindToString(currentReturnType_)
+        );
+    }
+}
+
+void Sema::visit(NumberExpr& expr)
+{
+    if (expr.isInteger)
+    {
+        expr.type = TypeKind::Int;
+    }
+    else
+    {
+        expr.type = TypeKind::Double;
+    }
+}
+
+
+void Sema::visit(VarExpr& expr)
+{
+    const Symbol* symbol =
+        symbols_.resolve(expr.name);
+
+    if (!symbol)
+    {
+        error(
+            expr.line,
+            "use of undeclared identifier '" +
+            expr.name +
+            "'"
+        );
+
+        expr.type = TypeKind::Unknown;
+
+        return;
+    }
+
+    expr.type = symbol->type;
+}
+
+
+void Sema::visit(AssignExpr& expr)
+{
+    const Symbol* symbol =
+        symbols_.resolve(expr.name);
+
+    TypeKind valueType =
+        checkExpr(expr.value.get());
+
+    if (!symbol)
+    {
+        error(
+            expr.line,
+            "assignment to undeclared identifier '" +
+            expr.name +
+            "'"
+        );
+
+        expr.type = TypeKind::Unknown;
+
+        return;
+    }
+
+    if (!isAssignable(
+            symbol->type,
+            valueType))
+    {
+        error(
+            expr.line,
+            std::string("cannot assign expression of type ") +
+            typeKindToString(valueType) +
+            " to variable '" +
+            expr.name +
+            "' of type " +
+            typeKindToString(symbol->type)
+        );
+    }
+
+    expr.type = symbol->type;
+}
+
+
+void Sema::visit(BinaryExpr& expr)
+{
+    checkBinary(&expr);
+}
+
+
+void Sema::visit(UnaryExpr& expr)
+{
+    checkUnary(&expr);
+}
 
 TypeKind Sema::checkExpr(Expr* expr)
 {
     if (!expr)
+    {
         return TypeKind::Unknown;
-
-    if (auto* number =
-            dynamic_cast<NumberExpr*>(expr))
-    {
-        if (number->isInteger)
-        {
-            number->type = TypeKind::Int;
-        }
-        else
-        {
-            number->type = TypeKind::Double;
-        }
-
-        return number->type;
     }
 
-    if (auto* var =
-            dynamic_cast<VarExpr*>(expr))
-    {
-        const Symbol* symbol =
-            symbols_.resolve(var->name);
+    expr->accept(*this);
 
-        if (!symbol)
-        {
-            error(
-                var->line,
-                "use of undeclared identifier '" +
-                var->name +
-                "'"
-            );
-
-            var->type = TypeKind::Unknown;
-
-            return TypeKind::Unknown;
-        }
-
-        var->type = symbol->type;
-
-        return var->type;
-    }
-
-    if (auto* assign =
-            dynamic_cast<AssignExpr*>(expr))
-    {
-        const Symbol* symbol =
-            symbols_.resolve(
-                assign->name
-            );
-
-        TypeKind valueType =
-            checkExpr(
-                assign->value.get()
-            );
-
-        if (!symbol)
-        {
-            error(
-                assign->line,
-                "assignment to undeclared identifier '" +
-                assign->name +
-                "'"
-            );
-
-            assign->type =
-                TypeKind::Unknown;
-
-            return TypeKind::Unknown;
-        }
-
-        if (!isAssignable(
-                symbol->type,
-                valueType))
-        {
-            error(
-                assign->line,
-                std::string("cannot assign expression of type ") +
-                typeKindToString(valueType) +
-                " to variable '" +
-                assign->name +
-                "' of type " +
-                typeKindToString(symbol->type)
-            );
-        }
-
-        assign->type = symbol->type;
-
-        return assign->type;
-    }
-
-    if (auto* binary =
-            dynamic_cast<BinaryExpr*>(expr))
-    {
-        return checkBinary(binary);
-    }
-
-    if (auto* unary =
-            dynamic_cast<UnaryExpr*>(expr))
-    {
-        return checkUnary(unary);
-    }
-    return TypeKind::Unknown;
+    return expr->type;
 }
-
 
 TypeKind Sema::checkBinary(
     BinaryExpr* expr)
@@ -508,14 +469,11 @@ TypeKind Sema::checkBinary(
     return TypeKind::Unknown;
 }
 
-
 TypeKind Sema::checkUnary(
     UnaryExpr* expr)
 {
     TypeKind operandType =
-        checkExpr(
-            expr->operand.get()
-        );
+        checkExpr(expr->operand.get());
 
     if (expr->op == TokenKind::Minus)
     {
@@ -562,7 +520,6 @@ TypeKind Sema::checkUnary(
     return TypeKind::Unknown;
 }
 
-
 bool Sema::isAssignable(
     TypeKind target,
     TypeKind source)
@@ -585,4 +542,5 @@ bool Sema::isAssignable(
 
     return false;
 }
+
 }
